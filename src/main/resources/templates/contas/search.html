@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+  xmlns:layout="http://www.ultraq.net.nz/web/thymeleaf/layout"
+  layout:decorator="layout">
+  <body>
+    <h1 layout:fragment="header" th:utext="#{contas.search.title}">Consulta de Contas</h1>
+    <div layout:fragment="content" class="container">
+      <form class="mainForm">
+        <div class="col-md-3 form-group">
+          <label for="text"  th:text="#{contas.search.contas}">Contas</label>
+          <input type="text" name="contas" class="form-control" th:placeholder="#{contas.search.placeholder.contas}" />
+        </div>
+        
+        <div class="col-md-12 form-group">
+          <button type="button" class="btn btn-lg btn-app btn-primary" 
+            th:text="#{contas.search.btn.pesquisar}">pesquisar</button>
+        </div>
+      </form>
+      
+      <div class="col-md-12">
+        <address class="address"></address>
+      </div>
+    </div>
+    <script layout:fragment="jsOnPage" th:inline="javascript">
+    /*<![CDATA[*/
+      function fillAddress(data) {
+        if (data) {
+    	  var content = data.logradouro + ' - Contas: ' + data.chave 
+    	    + ' - ' + data.bairro + ' - ' +data.cidade + ' - ' + data.estado;
+    	  $('.address').append('<strong>'+content+'</strong>');
+    	} else {
+          $('.address').html('');
+    	}
+      }
+      
+      function findContas() {
+        var key = $('input[name="contas"]').val();
+        
+        if (!$(".mainForm").valid()) {
+          return;
+        }
+        
+        clearMessages();
+        fillAddress();
+        $(".btn-app").prop('disabled', true);
+          
+        $.ajax({
+          type: "GET",
+          url: "/contass/"+key,
+          success: function(json) {
+            if (json) {
+              if (json.chave != key) {
+                showWarning('A pesquisa encontrou o Contas ' + json.chave + ' por proximidade.');
+              }
+            }
+            fillAddress(json);
+            $(".btn-app").prop('disabled', false);
+          },
+          error: function(data) {
+            $(".btn-app").prop('disabled', false);
+            if (data.status == '404') {
+              showWarning('A contas '+key+" não foi encontrado.")
+              $(".btn-app").prop('disabled', false);
+              return;
+            }
+            var msgError;
+            if (data.responseText) {
+              var responseText = JSON.parse(data.responseText);
+              msgError = responseText["message"];
+            } else {
+              msgError = data.statusText;
+            }
+            showError("Não foi possivel obter o Contas: "+msgError);
+            console.log(data);
+          }
+        });
+      }
+      
+      $(document).ready(function() {
+        activeNavigation('contas');
+        $(".btn-app").click(function(e){
+          e.preventDefault();
+          findContas();
+        });
+        
+        $(".mainForm").validate({
+          rules: {
+            contas: {
+              required: true
+            }
+          },
+          messages: {
+          	contas: {
+              required: 'Contas é obrigatório.'
+            }
+          },
+          highlight: function(element) {
+            $(element).closest('.form-group').addClass('has-error');
+          },
+          unhighlight: function(element) {
+            $(element).closest('.form-group').removeClass('has-error');
+          }
+        });
+      });
+    /*]]>*/
+    </script>
+  </body>
+</html>
